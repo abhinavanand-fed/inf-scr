@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './App.css';
 
 const apiEndpoint = 'https://randomuser.me/api/?results=500';
 
@@ -7,22 +8,27 @@ function App() {
   const [userList, setUserList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  const loadMore = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      axios.get(apiEndpoint).then((response) => {
-        setUserList([...userList, ...response.data.results]);
-        setIsLoading(false);
-      });
-    }, 1000);
-  };
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     // check if user is logged in
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     setIsLoggedIn(isLoggedIn);
+
+    // fetch user data if logged in
+    if (isLoggedIn) {
+      setIsLoading(true);
+      fetchUsers(1);
+    }
   }, []);
+
+  const fetchUsers = (pageNumber) => {
+    setIsLoading(true);
+    axios.get(`${apiEndpoint}&page=${pageNumber}`).then((response) => {
+      setUserList([...userList, ...response.data.results]);
+      setIsLoading(false);
+    });
+  };
 
   const handleLogin = (event) => {
     event.preventDefault();
@@ -31,6 +37,7 @@ function App() {
     if (username === 'foo' && password === 'bar') {
       localStorage.setItem('isLoggedIn', 'true');
       setIsLoggedIn(true);
+      fetchUsers(1);
     } else {
       alert('Invalid username or password');
     }
@@ -41,32 +48,45 @@ function App() {
     setIsLoggedIn(false);
   };
 
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop ===
+      document.documentElement.offsetHeight
+    ) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setPage(page + 1);
+        fetchUsers(page + 1);
+      }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  });
+
   return (
-    <div>
+    <div className="app">
       {isLoggedIn ? (
         <div>
-          <button onClick={handleLogout}>Logout</button>
-          <ul style={{ listStyle: 'none' }}>
+          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          <ul className="user-list">
             {userList.map((user, index) => (
-              <li key={index}>
-                <img src={user.picture.thumbnail} alt={user.name.first} />
-                <span>{user.name.first} {user.name.last}</span>
+              <li key={index} className="user-item">
+                <img className="user-avatar" src={user.picture.thumbnail} alt={user.name.first} />
+                <span className="user-name">{user.name.first} {user.name.last}</span>
               </li>
             ))}
             {isLoading && <li>Loading...</li>}
           </ul>
-          {!isLoading && (
-            <button onClick={loadMore}>
-              Load more
-            </button>
-          )}
         </div>
       ) : (
         <div>
           <form onSubmit={handleLogin}>
-            <input type="text" placeholder="Username" name="username" />
-            <input type="password" placeholder="Password" name="password" />
-            <button type="submit">Login</button>
+            <input className="input-field" type="text" placeholder="Username" name="username" />
+            <input className="input-field" type="password" placeholder="Password" name="password" />
+            <button className="login-btn" type="submit">Login</button>
           </form>
         </div>
       )}
